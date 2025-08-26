@@ -1,0 +1,7 @@
+{
+  "name": "GitHub Backlog Assistant",
+  "description": "An intelligent backlog management tool that uses Gemini to analyze your GitHub repositories and help you create, prioritize, and manage tasks from natural language.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
