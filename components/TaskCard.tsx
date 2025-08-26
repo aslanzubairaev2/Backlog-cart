@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Task } from '../types';
 import { 
     ArrowUpIcon, ArrowRightIcon, ArrowDownIcon, CheckIcon, StarIcon, 
-    StarSolidIcon, PencilIcon, TrashIcon, EllipsisVerticalIcon 
+    StarSolidIcon, PencilIcon, TrashIcon, EllipsisVerticalIcon, ClipboardIcon 
 } from './icons';
 
 interface TaskCardProps {
@@ -52,6 +52,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ card, onViewDetails, onUpdateTask, 
   const formattedDate = new Date(card.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const handleToggleComplete = (e: React.MouseEvent) => {
@@ -75,6 +76,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ card, onViewDetails, onUpdateTask, 
     e.stopPropagation();
     onDeleteTask(card.id);
     setIsMenuOpen(false);
+  };
+  
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const textToCopy = `Title:${card.title}\nDescription:${card.description}`;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        setIsCopied(true);
+        setTimeout(() => {
+            setIsCopied(false);
+            setIsMenuOpen(false);
+        }, 1500);
+    }).catch(err => {
+        console.error('Failed to copy text: ', err);
+    });
   };
 
   const toggleMenu = (e: React.MouseEvent) => {
@@ -154,6 +169,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ card, onViewDetails, onUpdateTask, 
                   <button onClick={handleEdit} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-600 flex items-center gap-3 transition-colors">
                       <PencilIcon className="w-5 h-5" />
                       <span>Редактировать</span>
+                  </button>
+                  <button onClick={handleCopy} className="w-full text-left px-4 py-2 text-sm text-slate-200 hover:bg-slate-600 flex items-center gap-3 transition-colors">
+                      {isCopied ? <CheckIcon className="w-5 h-5 text-green-400" /> : <ClipboardIcon className="w-5 h-5" />}
+                      <span>{isCopied ? 'Скопировано!' : 'Скопировать'}</span>
                   </button>
                   <div className="border-t border-slate-600 my-1"></div>
                   <button onClick={handleDelete} className="w-full text-left px-4 py-2 text-sm text-rose-400 hover:bg-slate-600 hover:text-rose-300 flex items-center gap-3 transition-colors">

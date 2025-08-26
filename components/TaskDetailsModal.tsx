@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Task } from '../types';
-import { XIcon } from './icons';
+import { XIcon, ClipboardIcon, CheckIcon } from './icons';
 
 interface TaskDetailsModalProps {
   task: Task;
@@ -45,6 +45,7 @@ const getLabelColorClass = (label: string): string => {
 
 const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ task, mode, onClose, onUpdateTask, onSwitchToEdit }) => {
   const [editableTask, setEditableTask] = useState<Task>(task);
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     setEditableTask(task);
@@ -63,6 +64,16 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ task, mode, onClose
 
   const handleSave = () => {
     onUpdateTask(editableTask);
+  };
+
+  const handleCopy = () => {
+    const textToCopy = `Title:${task.title}\nDescription:${task.description}`;
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+    });
   };
   
   const fullDate = new Date(task.createdAt).toLocaleDateString('ru-RU', {
@@ -93,9 +104,14 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ task, mode, onClose
                       <div className="text-sm text-slate-400">Создано: {fullDate}</div>
                   </div>
               </div>
-              <button onClick={onClose} className="text-slate-400 hover:text-white flex-shrink-0 p-2 -m-2">
-                  <XIcon className="w-6 h-6" />
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0 -m-2">
+                <button onClick={handleCopy} title="Скопировать задачу" className="text-slate-400 hover:text-white p-2" aria-label="Скопировать задачу">
+                    {isCopied ? <CheckIcon className="w-6 h-6 text-green-400" /> : <ClipboardIcon className="w-6 h-6" />}
+                </button>
+                <button onClick={onClose} className="text-slate-400 hover:text-white flex-shrink-0 p-2">
+                    <XIcon className="w-6 h-6" />
+                </button>
+              </div>
           </header>
 
           <main className="p-6 overflow-y-auto">
