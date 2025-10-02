@@ -4,7 +4,7 @@ export interface Task {
   description: string;
   labels: string[];
   priority: 'Urgent' | 'High' | 'Medium' | 'Low';
-  isDone: boolean;
+  status: 'Backlog' | 'In Progress' | 'Done';
   createdAt: string;
   isProcessing?: boolean;
   isFavorite?: boolean;

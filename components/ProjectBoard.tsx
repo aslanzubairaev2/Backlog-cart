@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Project, Task } from '../types';
 import TaskCard from './TaskCard';
 import AddTaskModal from './AddTaskModal';
@@ -19,27 +19,24 @@ const ProjectBoard: React.FC<ProjectBoardProps> = ({ project, onUpdateProject, o
   const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false);
   const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [modalMode, setModalMode] = useState<'view' | 'edit' | null>(null);
+  
+  // Local state for tasks to provide instant D&D feedback
+  const [tasks, setTasks] = useState<Task[]>(project.tasks);
+  const [draggingTask, setDraggingTask] = useState<Task | null>(null);
 
-  const sortedTasks = useMemo(() => {
-    return [...project.tasks].sort((a, b) => {
-      if (a.isDone !== b.isDone) {
-        return a.isDone ? 1 : -1;
-      }
-       if (a.isFavorite !== b.isFavorite) {
-        return b.isFavorite ? 1 : -1;
-      }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+  useEffect(() => {
+    setTasks(project.tasks);
   }, [project.tasks]);
+
 
   const visibleTasks = useMemo(() => {
     if (showCompleted) {
-      return sortedTasks;
+      return tasks;
     }
-    return sortedTasks.filter(task => !task.isDone);
-  }, [sortedTasks, showCompleted]);
+    return tasks.filter(task => task.status !== 'Done');
+  }, [tasks, showCompleted]);
 
-  const completedCount = useMemo(() => project.tasks.filter(t => t.isDone).length, [project.tasks]);
+  const completedCount = useMemo(() => project.tasks.filter(t => t.status === 'Done').length, [project.tasks]);
 
   const handleUpdateTask = useCallback((updatedTask: Task) => {
     const updatedTasks = project.tasks.map(task =>
@@ -56,15 +53,15 @@ const ProjectBoard: React.FC<ProjectBoardProps> = ({ project, onUpdateProject, o
   };
 
 
-  const handleCreateTask = useCallback((taskText: string) => {
+  const handleCreateTask = useCallback(({ title, description }: { title: string; description: string; }) => {
     const tempId = `task-pending-${Date.now()}`;
     const skeletonTask: Task = {
       id: tempId,
-      title: 'Идет анализ задачи...',
-      description: '',
+      title: title,
+      description: 'Идет анализ задачи...',
       labels: [],
       priority: 'Medium',
-      isDone: false,
+      status: 'Backlog',
       createdAt: new Date().toISOString(),
       isProcessing: true,
     };
@@ -73,12 +70,14 @@ const ProjectBoard: React.FC<ProjectBoardProps> = ({ project, onUpdateProject, o
     onUpdateProject({ ...project, tasks: tasksWithSkeleton });
     setIsAddTaskModalOpen(false);
 
-    parseTaskFromText(taskText, project.fullName)
-      .then(newTaskData => {
+    parseTaskFromText(title, description, project.fullName)
+      .then(suggestedData => {
         const finalTask: Task = {
-          ...newTaskData,
+          ...suggestedData,
           id: `task-${Date.now()}`,
-          isDone: false,
+          title,
+          description,
+          status: 'Backlog',
           createdAt: new Date().toISOString(),
         };
         const finalTasks = tasksWithSkeleton.map(t => t.id === tempId ? finalTask : t);
@@ -112,6 +111,36 @@ const ProjectBoard: React.FC<ProjectBoardProps> = ({ project, onUpdateProject, o
       setViewingTask(updatedTask);
       setModalMode('view');
   };
+
+  // --- Drag and Drop Handlers ---
+  const handleDragStart = (e: React.DragEvent, task: Task) => {
+    setDraggingTask(task);
+  };
+
+  const handleDragEnter = (e: React.DragEvent, targetTask: Task) => {
+    if (!draggingTask || draggingTask.id === targetTask.id) return;
+
+    const draggedIndex = tasks.findIndex(t => t.id === draggingTask.id);
+    const targetIndex = tasks.findIndex(t => t.id === targetTask.id);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newTasks = [...tasks];
+    const [removed] = newTasks.splice(draggedIndex, 1);
+    newTasks.splice(targetIndex, 0, removed);
+    
+    setTasks(newTasks);
+  };
+
+  const handleDragEnd = () => {
+    onUpdateProject({ ...project, tasks });
+    setDraggingTask(null);
+  };
+  
+  const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+  };
+
 
   return (
     <div>
@@ -150,11 +179,16 @@ const ProjectBoard: React.FC<ProjectBoardProps> = ({ project, onUpdateProject, o
             ) : (
               <TaskCard 
                 key={task.id} 
-                card={task} 
+                card={task}
+                isDragging={draggingTask?.id === task.id}
                 onViewDetails={() => handleViewTask(task)}
                 onEdit={() => handleEditTask(task)}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
+                onDragStart={(e) => handleDragStart(e, task)}
+                onDragEnter={(e) => handleDragEnter(e, task)}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
               />
             )
           )

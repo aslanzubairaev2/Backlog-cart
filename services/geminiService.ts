@@ -7,27 +7,17 @@ if (!process.env.API_KEY) {
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const parseTaskSystemInstruction = `Ты — полезный ассистент для преобразования естественного языка в структурированные данные для инструмента управления проектами. Пользователь предоставит текст, описывающий задачу, возможно, с контекстом о репозитории, к которому она относится. Всегда отвечай на русском языке.
+const parseTaskSystemInstruction = `Ты — полезный ассистент для инструмента управления проектами. Тебе будут предоставлены заголовок и описание задачи. Твоя задача — предложить для этой задачи подходящие метки и приоритет.
 
 Твои обязанности:
-1.  **Извлечь Заголовок:** Создай краткий и ясный заголовок для задачи на русском языке.
-2.  **Сгенерировать Описание:** Подробно опиши задачу на русском языке. Если ввод пользователя детальный, используй его. Если краткий — расширь его до осмысленного описания. Используй Markdown для форматирования, особенно для чек-листов, например, '- [ ]'.
-3.  **Предложить Метки:** Назначь 1-3 релевантные метки из этого списка: 'UI/Интерфейс', 'Бэкенд', 'Баг', 'Фича', 'Рефакторинг', 'Рутина', 'Документация'.
-4.  **Определить Приоритет:** Назначь приоритет из этого списка: 'Urgent', 'High', 'Medium', 'Low'.
+1.  **Предложить Метки:** Назначь 1-3 релевантные метки из этого списка: 'UI/Интерфейс', 'Бэкенд', 'Баг', 'Фича', 'Рефакторинг', 'Рутина', 'Документация'.
+2.  **Определить Приоритет:** Назначь приоритет из этого списка: 'Urgent', 'High', 'Medium', 'Low'.
 
-Ввод пользователя может быть простым отчетом об ошибке, запросом на новую функцию или сложной проблемой. Используй название репозитория для понимания контекста, если это необходимо. Верни ТОЛЬКО один JSON-объект, соответствующий схеме, с русским текстом в полях title и description.`;
+Верни ТОЛЬКО один JSON-объект, содержащий только ключи 'labels' и 'priority'.`;
 
 const parseTaskSchema = {
   type: Type.OBJECT,
   properties: {
-    title: {
-      type: Type.STRING,
-      description: 'A concise title for the task.'
-    },
-    description: {
-      type: Type.STRING,
-      description: 'A detailed description of the task, using Markdown for formatting.'
-    },
     labels: {
       type: Type.ARRAY,
       description: "A list of relevant labels (e.g., 'UI', 'Backend', 'Bug', 'Feature').",
@@ -38,15 +28,15 @@ const parseTaskSchema = {
         description: "The priority of the task ('Urgent', 'High', 'Medium', 'Low')."
     }
   },
-  required: ['title', 'description', 'labels', 'priority'],
+  required: ['labels', 'priority'],
 };
 
 
-export async function parseTaskFromText(text: string, repoContext: string): Promise<Omit<Task, 'id' | 'createdAt' | 'isDone'>> {
+export async function parseTaskFromText(title: string, description: string, repoContext: string): Promise<Pick<Task, 'labels' | 'priority'>> {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: `Parse this task for the repository "${repoContext}": "${text}"`,
+      contents: `Проанализируй следующую задачу для репозитория "${repoContext}":\n\nЗаголовок: "${title}"\nОписание: "${description}"`,
       config: {
         systemInstruction: parseTaskSystemInstruction,
         responseMimeType: "application/json",
@@ -57,18 +47,16 @@ export async function parseTaskFromText(text: string, repoContext: string): Prom
     const jsonString = response.text.trim();
     const parsed = JSON.parse(jsonString);
 
-    if (!parsed.title || !parsed.description || !Array.isArray(parsed.labels) || !parsed.priority) {
-        throw new Error('Invalid JSON structure from Gemini for task parsing');
+    if (!Array.isArray(parsed.labels) || !parsed.priority) {
+        throw new Error('Invalid JSON structure from Gemini for task suggestions');
     }
 
     return {
-        title: parsed.title,
-        description: parsed.description,
         labels: parsed.labels,
         priority: parsed.priority,
     };
   } catch (error) {
-    console.error("Error calling Gemini API for task parsing:", error);
-    throw new Error("Failed to parse task with Gemini. Please try again.");
+    console.error("Error calling Gemini API for task suggestions:", error);
+    throw new Error("Failed to get task suggestions from Gemini. Please try again.");
   }
 }

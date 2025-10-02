@@ -14,6 +14,7 @@ interface TaskDetailsModalProps {
 
 const ALL_LABELS = ['UI/Интерфейс', 'Бэкенд', 'Баг', 'Фича', 'Рефакторинг', 'Рутина', 'Документация'];
 const PRIORITIES: Task['priority'][] = ['Urgent', 'High', 'Medium', 'Low'];
+const STATUSES: Task['status'][] = ['Backlog', 'In Progress', 'Done'];
 
 const labelColors: { [key: string]: string } = {
   default: 'bg-slate-600 text-slate-200',
@@ -90,6 +91,10 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ task, mode, onClose
               <div className="flex-grow">
                   <h1 className="text-2xl font-bold text-white">{task.title}</h1>
                   <div className="flex items-center flex-wrap gap-x-4 gap-y-2 mt-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-slate-300">Статус:</span>
+                        <span className="text-sm text-white font-semibold">{task.status}</span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-slate-300">Приоритет:</span>
                         <span className="text-sm text-white font-semibold">{task.priority}</span>
@@ -193,6 +198,17 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ task, mode, onClose
                 />
             </div>
             <div className="md:col-span-1 space-y-6">
+                <div>
+                    <label htmlFor="status" className="block text-sm font-medium text-slate-300 mb-2">Статус</label>
+                    <select
+                        id="status"
+                        value={editableTask.status}
+                        onChange={(e) => handleFieldChange('status', e.target.value as Task['status'])}
+                        className="w-full bg-slate-800 border border-slate-600 rounded-md px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                </div>
                 <div>
                     <label htmlFor="priority" className="block text-sm font-medium text-slate-300 mb-2">Приоритет</label>
                     <select

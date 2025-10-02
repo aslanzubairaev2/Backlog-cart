@@ -4,11 +4,12 @@ import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 interface AddTaskModalProps {
   onClose: () => void;
-  onCreate: (taskText: string) => void;
+  onCreate: (taskData: { title: string, description: string }) => void;
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onCreate }) => {
-  const [spokenText, setSpokenText] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   
   const {
     isListening,
@@ -16,20 +17,22 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onCreate }) => {
     startListening,
     stopListening,
     hasRecognitionSupport,
+    resetTranscript,
   } = useSpeechRecognition();
 
   useEffect(() => {
     if (transcript) {
-        setSpokenText(transcript);
+        setDescription(prev => (prev ? prev + ' ' : '') + transcript);
+        resetTranscript();
     }
-  }, [transcript]);
+  }, [transcript, resetTranscript]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!spokenText.trim()) {
+    if (!title.trim()) {
       return;
     }
-    onCreate(spokenText);
+    onCreate({ title, description });
   };
   
   const toggleListening = () => {
@@ -48,16 +51,29 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onCreate }) => {
         </button>
         <div className="flex flex-col items-center text-center">
             <h2 className="text-3xl font-bold mb-2">Новая Задача</h2>
-            <p className="text-slate-400 mb-6">Опишите задачу, баг или идею, и ИИ создаст для вас карточку.</p>
+            <p className="text-slate-400 mb-6">Опишите задачу, баг или идею, и ИИ поможет вам с деталями.</p>
         </div>
-        <form onSubmit={handleSubmit} className="w-full">
-            <div className="mb-4 relative">
-                <label htmlFor="spokenText" className="block text-sm font-medium text-slate-300 mb-2">Описание задачи</label>
+        <form onSubmit={handleSubmit} className="w-full space-y-4">
+            <div>
+                <label htmlFor="title" className="block text-sm font-medium text-slate-300 mb-2">Заголовок</label>
+                <input
+                    id="title"
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Например: 'Реализовать аутентификацию через Google'"
+                    className="w-full bg-slate-800 border border-slate-600 rounded-md px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    disabled={isListening}
+                    required
+                />
+            </div>
+            <div className="relative">
+                <label htmlFor="description" className="block text-sm font-medium text-slate-300 mb-2">Описание (опционально)</label>
                 <textarea
-                    id="spokenText"
-                    value={spokenText}
-                    onChange={(e) => setSpokenText(e.target.value)}
-                    placeholder="Например: 'Реализовать аутентификацию через Google' или 'Исправить баг в мобильной верстке на главной странице'"
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Например: 'Исправить баг в мобильной верстке на главной странице...'"
                     className="w-full bg-slate-800 border border-slate-600 rounded-md px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                     rows={5}
                     disabled={isListening}
@@ -76,7 +92,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, onCreate }) => {
 
             <button
                 type="submit"
-                disabled={isListening || !spokenText.trim()}
+                disabled={isListening || !title.trim()}
                 className="w-full bg-indigo-600 text-white font-semibold py-3 rounded-md hover:bg-indigo-500 disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
             >
                 Создать задачу
